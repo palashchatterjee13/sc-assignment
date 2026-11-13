@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CERT C Code Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b1a2e;
+    --bg-2: #0e2036;
+    --card: #12263f;
+    --line: #1f3b5c;
+    --code-bg: #07111f;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --teal: #2dd4bf;
+    --teal-d: #14b8a6;
+    --red: #f87171;
+    --red-bg: rgba(248, 113, 113, .12);
+    --green: #4ade80;
+    --green-bg: rgba(74, 222, 128, .12);
+    --amber: #fbbf24;
+    --amber-bg: rgba(251, 191, 36, .12);
+    --kw: #c792ea;
+    --ty: #82aaff;
+    --fn: #7dd3fc;
+    --str: #a5e075;
+    --num: #f78c6c;
+    --pp: #f472b6;
+    --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background:
+      radial-gradient(1100px 500px at 85% -10%, rgba(45, 212, 191, .10), transparent 60%),
+      radial-gradient(900px 500px at -10% 10%, rgba(130, 170, 255, .08), transparent 60%),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+
+  header.hero { padding: 64px 0 28px; }
+  .kicker {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--teal);
+  }
+  .kicker .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 12px var(--teal); }
+  h1 {
+    font-size: clamp(32px, 5vw, 52px); line-height: 1.08; margin: 14px 0 14px;
+    font-weight: 800; letter-spacing: -.02em;
+  }
+  h1 .vs { color: var(--muted); font-weight: 600; }
+  h1 .bad { color: var(--red); }
+  h1 .good { color: var(--green); }
+  .lede { color: var(--muted); font-size: 17px; max-width: 720px; margin: 0; }
+  .sim-note {
+    margin-top: 22px; display: inline-flex; gap: 10px; align-items: center;
+    padding: 10px 14px; border-radius: 10px; font-size: 13.5px;
+    background: var(--amber-bg); color: #fde68a; border: 1px solid rgba(251, 191, 36, .35);
+  }
+
+  nav.jump { display: flex; flex-wrap: wrap; gap: 10px; margin: 30px 0 8px; }
+  nav.jump a {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 9px 14px 9px 9px; border-radius: 999px; text-decoration: none;
+    color: var(--text); background: var(--card); border: 1px solid var(--line);
+    font-size: 14px; font-weight: 600; transition: border-color .15s, transform .15s;
+  }
+  nav.jump a:hover { border-color: var(--teal-d); transform: translateY(-1px); }
+  nav.jump .n {
+    width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--teal-d); color: var(--bg); font-size: 12px; font-weight: 800;
+  }
+
+  section.example {
+    margin: 28px 0 40px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 18px; box-shadow: 0 18px 40px rgba(0, 0, 0, .28); overflow: hidden;
+    scroll-margin-top: 20px;
+  }
+  .ex-head {
+    display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;
+    padding: 22px 24px; border-bottom: 1px solid var(--line);
+  }
+  .ex-title { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .badge {
+    flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--teal-d); color: var(--bg); font-weight: 800; font-size: 16px;
+  }
+  .ex-title h2 { margin: 0; font-size: 21px; line-height: 1.2; }
+  .ex-title .sub { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--muted); font-size: 13.5px; }
+  .rule {
+    font-family: var(--mono); font-weight: 700; font-size: 12px; color: var(--teal);
+    padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(45, 212, 191, .45); background: rgba(45, 212, 191, .08);
+  }
+
+  .tabs { display: inline-flex; padding: 4px; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--line); }
+  .tabs button {
+    font: 600 14px var(--sans); border: 0; cursor: pointer; padding: 9px 16px; border-radius: 9px;
+    color: var(--muted); background: transparent; display: inline-flex; gap: 8px; align-items: center;
+    transition: background .15s, color .15s;
+  }
+  .tabs button .ic { font-weight: 800; }
+  .tabs button[aria-selected="true"].v { background: var(--red-bg); color: var(--red); box-shadow: inset 0 0 0 1px rgba(248, 113, 113, .45); }
+  .tabs button[aria-selected="true"].c { background: var(--green-bg); color: var(--green); box-shadow: inset 0 0 0 1px rgba(74, 222, 128, .45); }
+  .tabs button:focus-visible, .chip:focus-visible, .run:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+  .ex-body { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); }
+  .panel { min-width: 0; display: flex; flex-direction: column; }
+  .panel + .panel { border-left: 1px solid var(--line); }
+  .bar {
+    display: flex; align-items: center; gap: 10px; padding: 11px 16px;
+    background: var(--bg-2); border-bottom: 1px solid var(--line);
+    font: 500 12.5px var(--mono); color: var(--muted);
+  }
+  .lights { display: inline-flex; gap: 6px; }
+  .lights i { width: 10px; height: 10px; border-radius: 50%; display: block; background: #334155; }
+  .lights i:nth-child(1) { background: #f87171; } .lights i:nth-child(2) { background: #fbbf24; } .lights i:nth-child(3) { background: #4ade80; }
+  .bar .file { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar .tag { margin-left: auto; font-family: var(--sans); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; white-space: nowrap; flex: none; }
+  .tag.v { color: var(--red); background: var(--red-bg); }
+  .tag.c { color: var(--green); background: var(--green-bg); }
+  .tag.sim { color: var(--amber); background: var(--amber-bg); }
+
+  pre.code {
+    margin: 0; padding: 16px 0; background: var(--code-bg); flex: 1;
+    font: 13.5px/1.7 var(--mono); overflow-x: auto; counter-reset: ln;
+    font-variant-ligatures: none;
+  }
+  pre.code .l { display: block; padding: 0 18px 0 0; white-space: pre; }
+  pre.code .l::before {
+    counter-increment: ln; content: counter(ln);
+    display: inline-block; width: 44px; padding-right: 14px; text-align: right;
+    color: #3b4f6b; user-select: none;
+  }
+  pre.code .l.hl { background: rgba(248, 113, 113, .10); box-shadow: inset 3px 0 0 var(--red); }
+  pre.code .l.fx { background: rgba(74, 222, 128, .09); box-shadow: inset 3px 0 0 var(--green); }
+  .t-kw { color: var(--kw); } .t-ty { color: var(--ty); } .t-fn { color: var(--fn); }
+  .t-str { color: var(--str); } .t-num { color: var(--num); } .t-pp { color: var(--pp); } .t-k { color: var(--amber); }
+
+  .term-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--bg-2); }
+  .term-controls .lbl { font-size: 12px; color: var(--muted); font-weight: 600; margin-right: 2px; }
+  .chip {
+    font: 600 12.5px var(--sans); cursor: pointer; padding: 7px 11px; border-radius: 8px;
+    color: var(--muted); background: transparent; border: 1px solid var(--line);
+  }
+  .chip[aria-pressed="true"] { color: var(--text); border-color: var(--teal-d); background: rgba(45, 212, 191, .10); }
+  .run {
+    margin-left: auto; font: 700 13.5px var(--sans); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 9px; border: 0;
+    color: var(--bg); background: var(--teal); box-shadow: 0 6px 18px rgba(45, 212, 191, .25);
+    transition: transform .12s, filter .12s;
+  }
+  .run:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .run:disabled { opacity: .55; cursor: progress; transform: none; }
+  .run svg { width: 13px; height: 13px; }
+
+  .term {
+    flex: 1; min-height: 250px; margin: 0; padding: 16px 18px; background: #050c16;
+    font: 13.5px/1.75 var(--mono); color: #cbd5e1; white-space: pre-wrap; word-break: break-word;
+    font-variant-ligatures: none;
+  }
+  .term .cmd { color: var(--muted); }
+  .term .cmd b { color: var(--teal); font-weight: 500; }
+  .term .in { color: var(--fn); }
+  .term .bad { color: var(--red); font-weight: 700; }
+  .term .good { color: var(--green); font-weight: 700; }
+  .term .dim { color: #475569; }
+  .term .placeholder { color: #475569; font-style: italic; }
+  .cursor { display: inline-block; width: 8px; height: 15px; vertical-align: -2px; background: var(--teal); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .verdict {
+    display: none; margin: 0 16px 16px; padding: 10px 12px; border-radius: 10px;
+    font-size: 13.5px; font-weight: 600; align-items: center; gap: 10px;
+  }
+  .verdict.show { display: flex; animation: pop .25s ease-out; }
+  .verdict.bad { background: var(--red-bg); color: var(--red); border: 1px solid rgba(248, 113, 113, .4); }
+  .verdict.good { background: var(--green-bg); color: var(--green); border: 1px solid rgba(74, 222, 128, .4); }
+  .verdict.ok { background: rgba(148, 163, 184, .10); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, .3); }
+  .verdict .vi { font-size: 16px; }
+  @keyframes pop { from { transform: translateY(4px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .term-wrap { display: flex; flex-direction: column; flex: 1; background: #050c16; }
+
+  .explain {
+    display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start;
+    padding: 18px 24px 22px; border-top: 1px solid var(--line);
+  }
+  .explain .eicon {
+    width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; font-size: 17px;
+  }
+  .explain.v .eicon { background: var(--red-bg); color: var(--red); }
+  .explain.c .eicon { background: var(--green-bg); color: var(--green); }
+  .explain h3 { margin: 0 0 4px; font-size: 15px; }
+  .explain.v h3 { color: var(--red); } .explain.c h3 { color: var(--green); }
+  .explain p { margin: 0; color: #cbd5e1; font-size: 15px; max-width: 900px; }
+  .explain code, .lede code { font-family: var(--mono); font-size: .9em; color: var(--teal); background: rgba(45, 212, 191, .08); padding: 1px 5px; border-radius: 5px; }
+
+  footer { padding: 10px 0 56px; color: var(--muted); font-size: 13px; }
+  footer .row { display: flex; flex-wrap: wrap; gap: 8px 22px; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 18px; }
+
+  @media (max-width: 860px) {
+    .ex-body { grid-template-columns: 1fr; }
+    .panel + .panel { border-left: 0; border-top: 1px solid var(--line); }
+  }
+  @media (max-width: 560px) {
+    .wrap { padding: 0 16px; }
+    header.hero { padding-top: 40px; }
+    .ex-head, .explain { padding-left: 16px; padding-right: 16px; }
+    .tabs { width: 100%; }
+    .tabs button { flex: 1; justify-content: center; padding: 9px 8px; }
+    pre.code, .term { font-size: 12.5px; }
+    pre.code .l::before { width: 34px; padding-right: 10px; }
+    .run { margin-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <span class="kicker"><span class="dot"></span>CERT C Coding Standard · Live demo</span>
+      <h1><span class="bad">Vulnerable</span> <span class="vs">vs.</span> <span class="good">Compliant</span> C code</h1>
+      <p class="lede">Three short C programs, each shown in two versions. Pick an input, press <b>Run</b>, and watch what happens when an ordinary bug meets an unusual input. Then switch to the CERT C compliant version to see the fix.</p>
+      <div class="sim-note">⚠ This is a simulation. No code is actually compiled or run; the output shows typical behaviour on a build without extra protections.</div>
+      <nav class="jump" aria-label="Examples">
+        <a href="#ex1"><span class="n">01</span>Buffer overflow</a>
+        <a href="#ex2"><span class="n">02</span>Integer overflow</a>
+        <a href="#ex3"><span class="n">03</span>Use after free</a>
+      </nav>
+    </header>
+
+    <main id="examples"></main>
+
+    <footer>
+      <div class="row">
+        <span>CERT C Coding Standard · MCA Semester III</span>
+        <span>Rules shown: STR31-C · INT32-C · MEM30-C</span>
+      </div>
+    </footer>
+  </div>
+
+<script>
+const EXAMPLES = [
+  {
+    id: "ex1", num: "01", rule: "STR31-C", title: "Buffer Overflow",
+    tagline: "Guarantee that storage for strings has enough space",
+    file: "greet",
+    scenarios: [
+      { label: "Normal name", input: "Palash" },
+      { label: "Very long name", input: "AAAAAAAAAAAAAAAA" }
+    ],
+    vulnerable: {
+      highlight: [13],
+      code:
+`#include <stdio.h>
+#include <string.h>
+
+int main(void) {
+    char name[8];
+    int is_admin = 0;
+    char input[64];
+
+    printf("Enter name: ");
+    fgets(input, sizeof input, stdin);
+    input[strcspn(input, "\\n")] = '\\0';
+
+    strcpy(name, input);
+    printf("Hello, %s\\n", name);
+    printf("Admin access: %s\\n", is_admin ? "GRANTED" : "DENIED");
+    return 0;
+}`,
+      explain: "<code>name</code> only has room for 7 letters plus the end marker. <code>strcpy</code> copies whatever it is given without checking the size. A long name spills past <code>name</code> into the memory next to it, which here is <code>is_admin</code>, and switches it on. Nobody asked for admin access, but the program grants it.",
+      run(input) {
+        const lines = [{ prompt: "Enter name: ", input }];
+        if (input.length <= 7) {
+          lines.push({ text: "Hello, " + input }, { text: "Admin access: DENIED" });
+          return { lines, verdict: ["ok", "•", "Works correctly, but only because the input happened to be short."] };
+        }
+        lines.push({ text: "Hello, " + input }, { text: "Admin access: GRANTED", cls: "bad" });
+        return { lines, verdict: ["bad", "✗", "Exploited: the long name overflowed the buffer and overwrote is_admin."] };
+      }
+    },
+    compliant: {
+      highlight: [13, 14, 15, 16],
+      code:
+`#include <stdio.h>
+#include <string.h>
+
+int main(void) {
+    char name[8];
+    int is_admin = 0;
+    char input[64];
+
+    printf("Enter name: ");
+    fgets(input, sizeof input, stdin);
+    input[strcspn(input, "\\n")] = '\\0';
+
+    if (strlen(input) >= sizeof name) {
+        printf("Error: name too long (max %zu chars)\\n", sizeof name - 1);
+        return 1;
+    }
+    strcpy(name, input);
+    printf("Hello, %s\\n", name);
+    printf("Admin access: %s\\n", is_admin ? "GRANTED" : "DENIED");
+    return 0;
+}`,
+      explain: "Before copying, the program checks the length of the input. If the name will not fit in <code>name</code>, it stops with an error instead of writing past the end. <code>is_admin</code> can no longer be changed by accident.",
+      run(input) {
+        const lines = [{ prompt: "Enter name: ", input }];
+        if (input.length <= 7) {
+          lines.push({ text: "Hello, " + input }, { text: "Admin access: DENIED" });
+          return { lines, exit: 0, verdict: ["good", "✓", "Safe: normal input works exactly as before."] };
+        }
+        lines.push({ text: "Error: name too long (max 7 chars)", cls: "good" });
+        return { lines, exit: 1, verdict: ["good", "✓", "Safe: the long name was rejected before it could overflow."] };
+      }
+    }
+  },
+  {
+    id: "ex2", num: "02", rule: "INT32-C", title: "Integer Overflow",
+    tagline: "Ensure that operations on signed integers do not overflow",
+    file: "shop",
+    scenarios: [
+      { label: "Order 3 items", input: "3" },
+      { label: "Order 50000 items", input: "50000" }
+    ],
+    vulnerable: {
+      highlight: [10],
+      code:
+`#include <stdio.h>
+
+int main(void) {
+    int price = 50000;
+    int quantity;
+
+    printf("Quantity: ");
+    scanf("%d", &quantity);
+
+    int total = price * quantity;
+    printf("Total to pay: Rs. %d\\n", total);
+    return 0;
+}`,
+      explain: "An <code>int</code> can hold at most about 2.1 billion. 50,000 items × Rs. 50,000 is 2.5 billion, which is too big, so the result wraps around to a large negative number. A shop running this code would end up owing the customer money.",
+      run(input) {
+        const q = parseInt(input, 10);
+        const lines = [{ prompt: "Quantity: ", input }];
+        const real = 50000 * q;
+        const wrapped = ((real + 2147483648) % 4294967296 + 4294967296) % 4294967296 - 2147483648;
+        if (real === wrapped) {
+          lines.push({ text: "Total to pay: Rs. " + real });
+          return { lines, verdict: ["ok", "•", "Works correctly, but only because the numbers were small."] };
+        }
+        lines.push({ text: "Total to pay: Rs. " + wrapped, cls: "bad" });
+        return { lines, verdict: ["bad", "✗", "Exploited: the total overflowed and became negative."] };
+      }
+    },
+    compliant: {
+      highlight: [1, 11, 12, 13, 14],
+      code:
+`#include <limits.h>
+#include <stdio.h>
+
+int main(void) {
+    int price = 50000;
+    int quantity;
+
+    printf("Quantity: ");
+    scanf("%d", &quantity);
+
+    if (quantity <= 0 || quantity > INT_MAX / price) {
+        printf("Error: invalid quantity\\n");
+        return 1;
+    }
+    int total = price * quantity;
+    printf("Total to pay: Rs. %d\\n", total);
+    return 0;
+}`,
+      explain: "Before multiplying, the program checks that the result will fit. <code>INT_MAX / price</code> is the largest quantity that is still safe. Anything above that, or a zero or negative quantity, is refused, so the total can never wrap around.",
+      run(input) {
+        const q = parseInt(input, 10);
+        const lines = [{ prompt: "Quantity: ", input }];
+        if (q > 0 && q <= Math.floor(2147483647 / 50000)) {
+          lines.push({ text: "Total to pay: Rs. " + 50000 * q });
+          return { lines, exit: 0, verdict: ["good", "✓", "Safe: normal orders work exactly as before."] };
+        }
+        lines.push({ text: "Error: invalid quantity", cls: "good" });
+        return { lines, exit: 1, verdict: ["good", "✓", "Safe: the oversized order was refused before the overflow."] };
+      }
+    }
+  },
+  {
+    id: "ex3", num: "03", rule: "MEM30-C", title: "Use After Free",
+    tagline: "Do not access freed memory",
+    file: "account",
+    scenarios: [{ label: "Run program", input: null }],
+    vulnerable: {
+      highlight: [16, 22, 23],
+      code:
+`#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct {
+    char user[16];
+    int balance;
+} Account;
+
+int main(void) {
+    Account *acc = malloc(sizeof *acc);
+    strcpy(acc->user, "palash");
+    acc->balance = 1000;
+    printf("Created account for %s\\n", acc->user);
+
+    free(acc);
+
+    Account *other = malloc(sizeof *other);
+    strcpy(other->user, "attacker");
+    other->balance = 999999;
+
+    printf("User: %s\\n", acc->user);
+    printf("Balance: %d\\n", acc->balance);
+    free(other);
+    return 0;
+}`,
+      explain: "After <code>free(acc)</code>, the account's memory is handed back to the system. The very next <code>malloc</code> reuses that same spot for <code>other</code>. The old pointer <code>acc</code> still points there, so reading it now shows the attacker's data instead of Palash's.",
+      run() {
+        return {
+          lines: [
+            { text: "Created account for palash" },
+            { text: "User: attacker", cls: "bad" },
+            { text: "Balance: 999999", cls: "bad" }
+          ],
+          verdict: ["bad", "✗", "Exploited: the freed pointer read someone else's data."]
+        };
+      }
+    },
+    compliant: {
+      highlight: [16, 17, 18, 19],
+      code:
+`#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct {
+    char user[16];
+    int balance;
+} Account;
+
+int main(void) {
+    Account *acc = malloc(sizeof *acc);
+    strcpy(acc->user, "palash");
+    acc->balance = 1000;
+    printf("Created account for %s\\n", acc->user);
+
+    printf("User: %s\\n", acc->user);
+    printf("Balance: %d\\n", acc->balance);
+    free(acc);
+    acc = NULL;
+
+    Account *other = malloc(sizeof *other);
+    strcpy(other->user, "attacker");
+    other->balance = 999999;
+    free(other);
+    return 0;
+}`,
+      explain: "The account is only used while its memory is still valid. It is freed after the last use, and the pointer is set to <code>NULL</code> straight away, so it can never be read by mistake. The new allocation can no longer leak into the old account.",
+      run() {
+        return {
+          lines: [
+            { text: "Created account for palash" },
+            { text: "User: palash", cls: "good" },
+            { text: "Balance: 1000", cls: "good" }
+          ],
+          exit: 0,
+          verdict: ["good", "✓", "Safe: the account is read before it is freed, and never after."]
+        };
+      }
+    }
+  }
+];
+
+const KW = new Set(["return", "if", "else", "sizeof", "typedef", "struct", "for", "while"]);
+const TY = new Set(["int", "char", "void", "size_t", "Account", "const", "unsigned"]);
+const KC = new Set(["NULL", "INT_MAX", "stdin"]);
+const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+function highlightLine(src) {
+  const re = /(^\s*#\w+.*$)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|\b(\d+)\b|\b([A-Za-z_]\w*)\b/g;
+  let out = "", last = 0, m;
+  while ((m = re.exec(src))) {
+    out += esc(src.slice(last, m.index));
+    if (m[1]) out += `<span class="t-pp">${esc(m[1])}</span>`;
+    else if (m[2]) out += `<span class="t-str">${esc(m[2])}</span>`;
+    else if (m[3]) out += `<span class="t-num">${m[3]}</span>`;
+    else {
+      const w = m[4], after = src.slice(re.lastIndex);
+      if (KW.has(w)) out += `<span class="t-kw">${w}</span>`;
+      else if (TY.has(w)) out += `<span class="t-ty">${w}</span>`;
+      else if (KC.has(w)) out += `<span class="t-k">${w}</span>`;
+      else if (/^\s*\(/.test(after)) out += `<span class="t-fn">${w}</span>`;
+      else out += w;
+    }
+    last = re.lastIndex;
+  }
+  return out + esc(src.slice(last));
+}
+
+function renderCode(pre, version, kind) {
+  const marks = new Set(version.highlight);
+  pre.innerHTML = version.code.split("\n").map((l, i) =>
+    `<span class="l${marks.has(i + 1) ? (kind === "v" ? " hl" : " fx") : ""}">${highlightLine(l) || " "}</span>`
+  ).join("");
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function buildExample(ex) {
+  const s = document.createElement("section");
+  s.className = "example";
+  s.id = ex.id;
+  s.innerHTML = `
+    <div class="ex-head">
+      <div class="ex-title">
+        <div class="badge">${ex.num}</div>
+        <div>
+          <h2>${ex.title}</h2>
+          <div class="sub"><span class="rule">${ex.rule}</span><span>${ex.tagline}</span></div>
+        </div>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Code version">
+        <button class="v" role="tab" aria-selected="true" data-k="v"><span class="ic">✗</span>Vulnerable</button>
+        <button class="c" role="tab" aria-selected="false" data-k="c"><span class="ic">✓</span>Compliant</button>
+      </div>
+    </div>
+    <div class="ex-body">
+      <div class="panel">
+        <div class="bar"><span class="lights"><i></i><i></i><i></i></span><span class="file"></span><span class="tag"></span></div>
+        <pre class="code" tabindex="0" aria-label="C source code"></pre>
+      </div>
+      <div class="panel">
+        <div class="bar"><span class="lights"><i></i><i></i><i></i></span><span class="file">terminal</span><span class="tag sim">Simulated</span></div>
+        <div class="term-controls">
+          ${ex.scenarios.length > 1
+            ? `<span class="lbl">Input:</span>` + ex.scenarios.map((sc, i) => `<button class="chip" aria-pressed="${i === 0}" data-i="${i}">${sc.label}</button>`).join("")
+            : `<span class="lbl">No input needed</span>`}
+          <button class="run"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1.2v9.6L10.4 6z" fill="currentColor"/></svg>Run</button>
+        </div>
+        <div class="term-wrap">
+          <pre class="term" aria-live="polite"></pre>
+          <div class="verdict"><span class="vi"></span><span class="vt"></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="explain v">
+      <div class="eicon">!</div>
+      <div><h3></h3><p></p></div>
+    </div>`;
+
+  const state = { kind: "v", scen: 0, runId: 0 };
+  const pre = s.querySelector("pre.code");
+  const fileEl = s.querySelector(".panel .file");
+  const tagEl = s.querySelector(".panel .tag");
+  const term = s.querySelector(".term");
+  const verdict = s.querySelector(".verdict");
+  const runBtn = s.querySelector(".run");
+  const explain = s.querySelector(".explain");
+
+  const version = () => state.kind === "v" ? ex.vulnerable : ex.compliant;
+  const fname = () => `${ex.file}_${state.kind === "v" ? "vulnerable" : "compliant"}.c`;
+
+  function resetTerm() {
+    state.runId++;
+    term.innerHTML = `<span class="placeholder">Choose an input and press Run to see the output.</span>`;
+    verdict.className = "verdict";
+    runBtn.disabled = false;
+  }
+
+  function render() {
+    const v = version();
+    renderCode(pre, v, state.kind);
+    fileEl.textContent = fname();
+    tagEl.className = "tag " + state.kind;
+    tagEl.textContent = state.kind === "v" ? "Vulnerable" : "Compliant";
+    explain.className = "explain " + state.kind;
+    explain.querySelector(".eicon").textContent = state.kind === "v" ? "!" : "✓";
+    explain.querySelector("h3").textContent = state.kind === "v" ? "What goes wrong" : "How the fix works";
+    explain.querySelector("p").innerHTML = v.explain;
+    s.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.k === state.kind));
+    resetTerm();
+  }
+
+  async function type(el, text, speed) {
+    for (const ch of text) {
+      el.textContent += ch;
+      if (!reduced) await sleep(speed);
+    }
+  }
+
+  async function run() {
+    const id = ++state.runId;
+    runBtn.disabled = true;
+    verdict.className = "verdict";
+    term.innerHTML = "";
+    const alive = () => id === state.runId;
+    const sc = ex.scenarios[state.scen];
+    const result = version().run(sc.input);
+    const exe = fname().replace(".c", "");
+
+    const cmd = document.createElement("div");
+    cmd.className = "cmd";
+    cmd.innerHTML = `<b>$</b> `;
+    const cmdText = document.createElement("span");
+    cmd.appendChild(cmdText);
+    const cursor = document.createElement("span");
+    cursor.className = "cursor";
+    cmd.appendChild(cursor);
+    term.appendChild(cmd);
+    await type(cmdText, `gcc ${fname()} -o ${exe} && ./${exe}`, 14);
+    if (!alive()) return;
+    cursor.remove();
+    if (!reduced) await sleep(380);
+
+    for (const ln of result.lines) {
+      if (!alive()) return;
+      const row = document.createElement("div");
+      term.appendChild(row);
+      if (ln.prompt !== undefined) {
+        row.textContent = ln.prompt;
+        const inp = document.createElement("span");
+        inp.className = "in";
+        row.appendChild(inp);
+        const c = document.createElement("span");
+        c.className = "cursor";
+        row.appendChild(c);
+        if (!reduced) await sleep(350);
+        await type(inp, ln.input, 55);
+        if (!reduced) await sleep(250);
+        c.remove();
+      } else {
+        if (ln.cls) row.className = ln.cls;
+        row.textContent = ln.text;
+        if (!reduced) await sleep(260);
+      }
+    }
+    if (!alive()) return;
+    const exit = document.createElement("div");
+    exit.className = "dim";
+    exit.textContent = `[process exited with code ${result.exit ?? 0}]`;
+    term.appendChild(exit);
+
+    const [kind, icon, msg] = result.verdict;
+    verdict.className = "verdict show " + kind;
+    verdict.querySelector(".vi").textContent = icon;
+    verdict.querySelector(".vt").textContent = msg;
+    runBtn.disabled = false;
+  }
+
+  s.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => { state.kind = b.dataset.k; render(); }));
+  s.querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => {
+    state.scen = +b.dataset.i;
+    s.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", c === b));
+    resetTerm();
+  }));
+  runBtn.addEventListener("click", run);
+
+  render();
+  return s;
+}
+
+const main = document.getElementById("examples");
+EXAMPLES.forEach(ex => main.appendChild(buildExample(ex)));
+</script>
+</body>
+</html>
